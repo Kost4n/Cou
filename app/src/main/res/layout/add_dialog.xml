@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+    <TextView
+            android:id="@+id/tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Введите давление и пульс: "
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <EditText
+            android:id="@+id/input_up_pres"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv"
+            app:layout_constraintRight_toLeftOf="@id/input_dw_pres"
+            app:layout_constraintHorizontal_weight="1"
+            android:inputType="number"
+            android:hint="С.А.Д.">
+        <requestFocus/>
+    </EditText>
+    <EditText
+            android:id="@+id/input_dw_pres"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintLeft_toRightOf="@id/input_up_pres"
+            app:layout_constraintTop_toBottomOf="@+id/tv"
+            app:layout_constraintRight_toLeftOf="@id/input_puls"
+            app:layout_constraintHorizontal_weight="1"
+            android:inputType="number"
+            android:hint="Д.А.Д.">
+        <requestFocus/>
+    </EditText>
+    <EditText
+            android:id="@+id/input_puls"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintLeft_toRightOf="@id/input_dw_pres"
+            app:layout_constraintTop_toBottomOf="@+id/tv"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintHorizontal_weight="1"
+            android:inputType="number"
+            android:hint="ПУЛЬС">
+        <requestFocus/>
+    </EditText>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
