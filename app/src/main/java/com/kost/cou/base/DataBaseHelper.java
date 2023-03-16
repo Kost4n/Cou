@@ -10,7 +10,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
    public static final String TABLE_RECORDS = "records";
    public static final String COLUMN_ID = "_id";
    public static final String COLUMN_DATE = "date";
-   public static final String COLUMN_PRES = "pressure";
+   public static final String COLUMN_UP_PRES = "up_pres";
+   public static final String COLUMN_DOWN_PRES = "dw_pres";
+   public static final String COLUMN_PULS = "puls";
 
    private  Context context;
 
@@ -23,7 +25,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("create table records(_id integer PRIMARY KEY AUTOINCREMENT,"
-                +"date , up_pres integer," +
+                +"date text, up_pres integer," +
                 "dw_pres integer, puls integer)");
     }
 

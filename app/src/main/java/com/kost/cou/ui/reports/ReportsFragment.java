@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -14,29 +13,28 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.ViewModelProvider;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.*;
 import com.github.mikephil.charting.data.*;
-import com.github.mikephil.charting.formatter.IAxisValueFormatter;
-import com.github.mikephil.charting.formatter.IValueFormatter;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
-import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.MPPointF;
 import com.github.mikephil.charting.utils.Utils;
-import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.kost.cou.R;
 import com.kost.cou.base.DataBaseHelper;
 import com.kost.cou.databinding.FragmentReportsBinding;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 public class ReportsFragment extends Fragment {
 
@@ -45,10 +43,13 @@ public class ReportsFragment extends Fragment {
     private DataBaseHelper dataBaseHelper;
     private SQLiteDatabase db;
 
-    public ArrayList<Integer> downPressure;
-    public ArrayList<Integer> puls;
+    public ArrayList<String> dates = new ArrayList<>();
+    public List<Entry> upPressure = new ArrayList<>();
+    public List<Entry> downPressure = new ArrayList<>();
+    public ArrayList<Integer> puls = new ArrayList<>();
 
 
+    @SuppressLint("NewApi")
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
         ReportsViewModel reportsViewModel =
@@ -62,41 +63,83 @@ public class ReportsFragment extends Fragment {
         db = dataBaseHelper.getWritableDatabase();
         //Query();
 
-        LineChart lineChart = binding.LineChart;
+        LineChart lineChartUp = binding.LineChartUp;
+        LineChart lineChartDown = binding.LineChartDown;
 
-        LineDataSet lineDataSet = new LineDataSet(getArrayEnrtries(), "Давление за "); // добавление данных на график
+        selectForGraph(LocalDate.now().toString(), 2);
+        setOptions(lineChartUp,2, true);
+        setOptions(lineChartDown,2, false);
+
+        binding.timeButtonFor3Days.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectForGraph(LocalDate.now().toString(), 2);
+                setOptions(lineChartUp,2, true);
+                setOptions(lineChartDown,2, false);
+            }
+        });
+
+        binding.timeButtonForWeek.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectForGraph(LocalDate.now().toString(), 6);
+                setOptions(lineChartUp,6, true);
+                setOptions(lineChartDown,6, false);
+            }
+        });
+
+        binding.timeButtonFor2Week.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectForGraph(LocalDate.now().toString(), 13);
+                setOptions(lineChartUp,13, true);
+                setOptions(lineChartDown,13, false);
+            }
+        });
+        return root;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void setOptions(LineChart lineChart, int minisDays, boolean isChartUp) {
+        String label;
+
+        if (isChartUp) {
+            label = "Верхнее давление за ";
+        } else {
+            label = "Нижнее давление за ";
+        }
+
+        LineDataSet lineDataSet; // добавление данных на график
+        if (isChartUp) {
+            lineDataSet = new LineDataSet(upPressure, label + LocalDate.now().minusDays(minisDays) +
+                    " - " + LocalDate.now());
+        } else {
+            lineDataSet = new LineDataSet(downPressure, label + LocalDate.now().minusDays(minisDays) +
+                    " - " + LocalDate.now());
+        }
+
         lineDataSet.setValueTextSize(12f);  // настройка красоты
         lineDataSet.setDrawCircleHole(true);
         lineDataSet.setColor(Color.BLACK);
         lineDataSet.setCircleColor(Color.GREEN);
         lineDataSet.setCircleRadius(4);
         lineDataSet.setCircleHoleRadius(1);
-        //lineDataSet.setDrawHighlightIndicators(true);
-        //lineDataSet.setHighLightColor(Color.RED);
         lineDataSet.setValueTextColor(Color.DKGRAY);
         lineDataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-
-        downPressure = getArrayDownPressure();
-        puls = getArrayPuls();
         lineDataSet.setValueFormatter(new ValueFormatter() {
             @Override
             public String getPointLabel(Entry entry) {
-                return (int) entry.getY() + " / " + downPressure.get((int) entry.getX());   // Форматирует то что на точках пересечения
+                    return (int) entry.getY() + "";
             }
         });
-
-
-
         LineData lineData = new LineData(lineDataSet); // настройка красоты
         lineChart.setData(lineData);
-
-
         lineChart.getDescription().setTextSize(12);
         lineChart.setDrawMarkers(true);
         lineChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTH_SIDED);
-        lineChart.getXAxis().setGranularityEnabled(true);
-        lineChart.getXAxis().setGranularity(1.0f);
-        lineChart.getXAxis().setLabelCount(lineDataSet.getEntryCount());
+        //        lineChart.getXAxis().setGranularityEnabled(true);
+        //lineChart.getXAxis().setGranularity(1.0f);
+        //lineChart.getXAxis().setLabelCount(lineDataSet.getEntryCount());
         lineChart.getAxisRight().setValueFormatter(new ValueFormatter() {
             @Override
             public String getAxisLabel(float value, AxisBase axis) {
@@ -108,20 +151,41 @@ public class ReportsFragment extends Fragment {
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setTextColor(Color.BLACK);
         xAxis.setTextSize(10f);
-        xAxis.setGranularity(1f);
         xAxis.setAxisMinimum(-0.1f);
-        //xAxis.setAxisMaximum(5.1f);
 
-        List<String> dates = getArrayDate();
         xAxis.setValueFormatter(new IndexAxisValueFormatter(dates));  // Даты внизу
 
-        LimitLine limitLine = new LimitLine(135f); // линия высокого давления
-        limitLine.setLineColor(Color.RED);
-        limitLine.setLineWidth(2f);
-        limitLine.setLabel("Верхняя граница давления 135");
-        limitLine.setTextSize(6f);
-        YAxis yAxis = lineChart.getAxisLeft();
-        yAxis.addLimitLine(limitLine);
+        if (isChartUp) {
+            LimitLine limitLineUp = new LimitLine(135f); // линия высокого давления
+            limitLineUp.setLineColor(Color.RED);
+            limitLineUp.setLineWidth(2f);
+            limitLineUp.setLabel("Верхняя граница давления 135");
+            limitLineUp.setTextSize(6f);
+            YAxis yAxis = lineChart.getAxisLeft();
+            yAxis.addLimitLine(limitLineUp);
+
+            LimitLine limitLineDown = new LimitLine(90f); // линия нижнего давления
+            limitLineDown.setLineColor(Color.RED);
+            limitLineDown.setLineWidth(2f);
+            limitLineDown.setLabel("Нижняя граница давления 90");
+            limitLineDown.setTextSize(6f);
+            yAxis.addLimitLine(limitLineDown);
+        } else {
+            LimitLine limitLineUp = new LimitLine(100f); // линия высокого давления
+            limitLineUp.setLineColor(Color.RED);
+            limitLineUp.setLineWidth(2f);
+            limitLineUp.setLabel("Верхняя граница давления 100");
+            limitLineUp.setTextSize(6f);
+            YAxis yAxis = lineChart.getAxisLeft();
+            yAxis.addLimitLine(limitLineUp);
+
+            LimitLine limitLineDown = new LimitLine(60f); // линия нижнего давления
+            limitLineDown.setLineColor(Color.RED);
+            limitLineDown.setLineWidth(2f);
+            limitLineDown.setLabel("Нижняя граница давления 60");
+            limitLineDown.setTextSize(6f);
+            yAxis.addLimitLine(limitLineDown);
+        }
 
         lineChart.getXAxis().setDrawGridLines(false);
         lineChart.getXAxis().setAxisLineWidth(2f);
@@ -133,76 +197,140 @@ public class ReportsFragment extends Fragment {
         MyMarkerView myMarkerView = new MyMarkerView(getLayoutInflater().getContext(),
                 R.layout.touch_graph_content);
         lineChart.setMarker(myMarkerView);
-        lineChart.setVisibleXRangeMaximum(30);
-//        CustomMarkerView customMarkerView = new CustomMarkerView(getLayoutInflater().getContext(),
-//                R.layout.touch_graph_content);
-//        lineChart.setMarker(customMarkerView);
+//        lineChart.setVisibleXRangeMaximum(30);
 
-        lineChart.invalidate();
         lineChart.notifyDataSetChanged();
-
-        return root;
+        lineChart.invalidate();
+    }
+    public Integer getUpPressure(String date) {
+        cursor = db.query("records", null, "date = ?", new String[]{date}, null, null, "date");
+        if (cursor.moveToFirst()) {
+             @SuppressLint("Range") int x = cursor.getInt(cursor.getColumnIndex(DataBaseHelper.COLUMN_UP_PRES));
+             return x;
+        }
+        return 0;
     }
 
-    public List<Entry> getArrayEnrtries() {
-        List<Entry> entryList = new ArrayList<>();
-        cursor = db.query("records", null, null, null, null, null, "date");
-        float i = 0.0F;
-        if (cursor.moveToFirst()) {
-            do {
-                //@SuppressLint("Range") String date_db = cursor.getString(cursor.getColumnIndex("date"));
+    private ArrayList<Integer> getArrayUpPres(String date) {
+        ArrayList<Integer> array = new ArrayList<>();
+        cursor = db.query("records",null, "date = ?",
+                new String[]{date},null,null,null);
+        if(cursor.moveToFirst()){
+            do{
                 @SuppressLint("Range") int up_pres_dp = cursor.getInt(cursor.getColumnIndex("up_pres"));
-                // @SuppressLint("Range") int dw_pres_dp = cursor.getInt(cursor.getColumnIndex("dw_pres"));
-                Log.i(null, up_pres_dp + " - Значения давдени ---------------------------------------------------------------");
-                entryList.add(new Entry(i, (float) up_pres_dp));
-                i++;
-            } while (cursor.moveToNext());
+                array.add(up_pres_dp);
+            }while(cursor.moveToNext());
         }
-        return entryList;
+        return array;
     }
 
-    public List<String> getArrayDate() {
-        List<String> arrayDate = new ArrayList<>();
-        cursor = db.query("records", null, null, null, null, null, "date");
-        int i = 0;
+    private ArrayList<Integer> getArrayDownPres(String date) {
+        ArrayList<Integer> array = new ArrayList<>();
+        cursor = db.query("records",null, "date = ?",
+                new String[]{date},null,null,null);
+        if(cursor.moveToFirst()){
+            do{
+                @SuppressLint("Range") int down_pres_dp = cursor.getInt(cursor.getColumnIndex(DataBaseHelper.COLUMN_DOWN_PRES));
+                array.add(down_pres_dp);
+            }while(cursor.moveToNext());
+        }
+        return array;
+    }
+
+    private ArrayList<Integer> getArrayPuls(String date) {
+        ArrayList<Integer> array = new ArrayList<>();
+        cursor = db.query("records",null, "date = ?",
+                new String[]{date},null,null,null);
+        if(cursor.moveToFirst()){
+            do{
+                @SuppressLint("Range") int puls = cursor.getInt(cursor.getColumnIndex(DataBaseHelper.COLUMN_PULS));
+                array.add(puls);
+            }while(cursor.moveToNext());
+        }
+        return array;
+    }
+
+    private ArrayList<String> getArrayDates(String date) {
+        ArrayList<String> array = new ArrayList<>();
+        cursor = db.query("records",null, "date = ?",
+                new String[]{date},null,null,null);
+        if(cursor.moveToFirst()){
+            do{
+                @SuppressLint("Range") String dates= cursor.getString(cursor.getColumnIndex(DataBaseHelper.COLUMN_DATE));
+                array.add(dates);
+            }while(cursor.moveToNext());
+        }
+        return array;
+    }
+    public String getDate(String date) {
+        cursor = db.query("records", null, "date = ?", new String[]{date}, null, null, "date");
         if (cursor.moveToFirst()) {
-            do {
-                @SuppressLint("Range") String date_db = cursor.getString(cursor.getColumnIndex("date"));
-                arrayDate.add(date_db);
-                i++;
-            } while (cursor.moveToNext());
+            @SuppressLint("Range") String x = cursor.getString(cursor.getColumnIndex(DataBaseHelper.COLUMN_DATE));
+            return x;
         }
-        return arrayDate;
+        return "";
     }
 
-    public ArrayList<Integer> getArrayDownPressure() {
-        ArrayList<Integer> arrayDate = new ArrayList<>();
-        cursor = db.query("records", null, null, null, null, null, "date");
-        int i = 0;
+    public Integer getDownPressure(String date) {
+        cursor = db.query("records", null, "date = ?", new String[]{date}, null, null, "date");
         if (cursor.moveToFirst()) {
-            do {
-                @SuppressLint("Range") int dw_pres = cursor.getInt(cursor.getColumnIndex("dw_pres"));
-                arrayDate.add(dw_pres);
-                i++;
-            } while (cursor.moveToNext());
+            @SuppressLint("Range") int x = cursor.getInt(cursor.getColumnIndex(DataBaseHelper.COLUMN_DOWN_PRES));
+            return x;
         }
-        return arrayDate;
+        return 0;
     }
 
-    private ArrayList<Integer> getArrayPuls() {
-        ArrayList<Integer> arrayDate = new ArrayList<>();
-        cursor = db.query("records", null, null, null, null, null, "date");
-        int i = 0;
+    private Integer getPuls(String date) {
+        cursor = db.query("records", null, "date = ?", new String[]{date}, null, null, "date");
         if (cursor.moveToFirst()) {
-            do {
-                @SuppressLint("Range") int puls = cursor.getInt(cursor.getColumnIndex("puls"));
-                arrayDate.add(puls);
-                i++;
-            } while (cursor.moveToNext());
+            @SuppressLint("Range") int x = cursor.getInt(cursor.getColumnIndex(DataBaseHelper.COLUMN_PULS));
+            return x;
         }
-        return arrayDate;
+        return 0;
     }
 
+    @SuppressLint({"NewApi", "LocalSuppress"})
+    public void selectForGraph(String dateEnd, int daysBefore) {
+        ArrayList<String> localDates = new ArrayList<>();
+        List<Entry> upPres = new ArrayList<>(),
+                downPres = new ArrayList<>();
+        ArrayList<Integer> localPuls = new ArrayList<>();
+        LocalDate start = LocalDate.parse(dateEnd).minusDays(daysBefore);
+        LocalDate end = LocalDate.parse(dateEnd);
+
+        float i = 0.0F;
+        while (!start.isAfter(end)) {
+            Log.i(null, "--------------------------------------------------------------------------- " + start);
+            if (getArrayUpPres(start.toString()).size() > 1) {
+                ArrayList<String> localDt = getArrayDates(start.toString());
+                ArrayList<Integer> localUp = getArrayUpPres(start.toString());
+                ArrayList<Integer> localDown = getArrayDownPres(start.toString());
+                ArrayList<Integer> locPls = getArrayPuls(start.toString());
+                for (int j = 0; j < localUp.size(); j++) {
+                    upPres.add(new Entry(i, localUp.get(j)));
+                    downPres.add(new Entry(i, localDown.get(j)));
+                    localDates.add(localDt.get(j));
+                    localPuls.add(locPls.get(j));
+                    i++;
+                }
+                start = start.plusDays(1);
+            } else {
+                if (getDate(start.toString()) != null && getDate(start.toString()) != "") {
+                    localDates.add(getDate(start.toString()));
+                    upPres.add(new Entry(i, getUpPressure(start.toString())));
+                    downPres.add(new Entry(i, getDownPressure(start.toString())));
+                    localPuls.add(getPuls(start.toString()));
+                    i++;
+                }
+                start = start.plusDays(1);
+            }
+        }
+
+        dates = localDates;
+        upPressure = upPres;
+        downPressure = downPres;
+        puls = localPuls;
+    }
 
     @Override
     public void onDestroyView() {

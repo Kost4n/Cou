@@ -23,7 +23,8 @@
             app:layout_constraintRight_toLeftOf="@id/input_dw_pres"
             app:layout_constraintHorizontal_weight="1"
             android:inputType="number"
-            android:hint="С.А.Д.">
+            android:hint="С.А.Д."
+            android:imeOptions="actionNext">
         <requestFocus/>
     </EditText>
     <EditText
@@ -35,7 +36,8 @@
             app:layout_constraintRight_toLeftOf="@id/input_puls"
             app:layout_constraintHorizontal_weight="1"
             android:inputType="number"
-            android:hint="Д.А.Д.">
+            android:hint="Д.А.Д."
+            android:imeOptions="actionNext">
         <requestFocus/>
     </EditText>
     <EditText
@@ -47,7 +49,8 @@
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintHorizontal_weight="1"
             android:inputType="number"
-            android:hint="ПУЛЬС">
+            android:hint="ПУЛЬС"
+            android:imeOptions="actionDone">
         <requestFocus/>
     </EditText>
 

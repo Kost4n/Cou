@@ -3,6 +3,7 @@ package com.kost.cou.ui.home;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -11,9 +12,9 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.kost.cou.R;
 import com.kost.cou.base.DataBaseHelper;
 import com.kost.cou.databinding.FragmentHomeBinding;
+import lombok.SneakyThrows;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -58,22 +60,22 @@ public class HomeFragment extends Fragment {
             db = dataBaseHelper.getWritableDatabase();
             listView = binding.listData;
 
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy");
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Query(simpleDateFormat.format(new Date()));
-            // отображение данных из бд
+            // отображение данных из б-
 
             binding.calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
                 @Override
                 public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
                     try {
                         if (dayOfMonth < 10 && month < 10) {
-                            dateForDB = "0" + dayOfMonth + ".0" + (month + 1) + "." + year;
+                            dateForDB = year + "-0" + (month + 1) + "-0" + dayOfMonth;
                         } else if (dayOfMonth < 10) {
-                            dateForDB = "0" + dayOfMonth + "." + (month + 1) + "." + year;
+                            dateForDB =  year + "-" + (month + 1) + "-0" + dayOfMonth;
                         } else if (month < 10) {
-                            dateForDB = dayOfMonth + ".0" + (month + 1) + "." + year;
+                            dateForDB = year + "-0" + (month + 1) + "-" + dayOfMonth;
                         } else {
-                            dateForDB = dayOfMonth + "." + (month + 1) + "." + year;
+                            dateForDB = year + "-" + (month + 1) + "-" + dayOfMonth;
                         }
                         // Взятие даты с календаря
                         Query(dateForDB); // Взятие  данных из бд в listView
@@ -93,6 +95,12 @@ public class HomeFragment extends Fragment {
                     View addDialog = inflater.inflate(R.layout.add_dialog, null);
                     builderDialog.setView(addDialog);
                     EditText upPres = (EditText) addDialog.findViewById(R.id.input_up_pres);
+                    upPres.requestFocus();
+                    upPres.setFocusableInTouchMode(true);
+                    InputMethodManager imm = (InputMethodManager) getLayoutInflater().getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+
+//                    getActivity().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
                     EditText dwPres = (EditText) addDialog.findViewById(R.id.input_dw_pres);
                     EditText puls = (EditText) addDialog.findViewById(R.id.input_puls);
 
@@ -158,6 +166,7 @@ public class HomeFragment extends Fragment {
 
                         @Override
                         public void afterTextChanged(Editable s) {
+
                             if (length != s.length() ) {
                                 boolEdit[1] = true;
                                 if (boolEdit[0] && boolEdit[1] && boolEdit[2]) {
@@ -187,10 +196,34 @@ public class HomeFragment extends Fragment {
                                 if (boolEdit[0] && boolEdit[1] && boolEdit[2]) {
                                     alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(true);
                                     alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setTextColor(Color.GREEN);
+
                                 }
                             }
                         }
                     });
+
+                    puls.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                        @Override
+                        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                            if (actionId == EditorInfo.IME_ACTION_DONE && boolEdit[0] && boolEdit[1] && boolEdit[2]) {
+                                Insert(upPres, dwPres, puls);      //match this behavior to your 'Send' (or Confirm) button
+                                alertDialog.cancel();                                       
+                            }
+                            return true;
+                        }
+                    });
+//                    puls.setOnKeyListener(new View.OnKeyListener() {
+//                        @Override
+//                        public boolean onKey(View v, int keyCode, KeyEvent event) {
+//                            if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
+//                                    (keyCode == KeyEvent.KEYCODE_ENTER)) {
+//                                Toast.makeText(getLayoutInflater().getContext(), "СРАБОТАЛО", Toast.LENGTH_SHORT).show();
+//                                return true;
+//                            }
+//
+//                            return false;
+//                        }
+//                    });
 
                     alertDialog.show();
 
@@ -239,7 +272,9 @@ public class HomeFragment extends Fragment {
          *  Взятие данных из бд
          */
         public void Query(String date /* Поиск данных по дате: date */){
-            cursor = db.query("records",null, "date = ?", new String[]{date},null,null,null);
+
+            cursor = db.query("records",null, "date = ?",
+                    new String[]{date},null,null,null);
             if(cursor.moveToFirst()){
                 do{
                     @SuppressLint("Range") String id = cursor.getString(cursor.getColumnIndex("_id"));
@@ -262,6 +297,7 @@ public class HomeFragment extends Fragment {
          *   Вставка данных в бд
          */
 
+        @SneakyThrows
         public void Insert(EditText upPres, EditText dwPres, EditText puls){
             ContentValues values = new ContentValues();
             String localDate;
@@ -269,7 +305,7 @@ public class HomeFragment extends Fragment {
                 localDate = dateForDB;
                 Log.i(null, dateForDB + " dateForDB------------------------------------");
             } else {
-                timeNow = new SimpleDateFormat("dd.MM.yyyy").format(new Date());
+                timeNow = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
                 localDate = timeNow;
                 Log.i(null, timeNow + " timeNow------------------------------------");
             }
